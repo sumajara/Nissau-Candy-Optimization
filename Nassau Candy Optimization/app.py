@@ -6,7 +6,8 @@ import streamlit as st
 
 # Page Configuration
 st.set_page_config(
-    page_title="Nassau Candy - Optimization Dashboard", layout="wide"
+    page_title="Nassau Candy - Optimization Dashboard",
+    layout="wide"
 )
 
 st.title("🏭 Nassau Candy: Factory Reallocation & Shipping Optimization")
@@ -19,15 +20,18 @@ st.markdown(
 # Load Data
 @st.cache_data
 def load_data():
-  base_dir = os.path.dirname(os.path.abspath(__file__))
-  excel_path = os.path.join(base_dir, "Nassau_Candy_Project_Workbook.xlsx")
-  if not os.path.exists(excel_path):
-    st.error(f"Excel file not found at: {excel_path}")
-    st.stop()
-  return pd.read_excel(excel_path, sheet_name="Cleaned Data")
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    excel_path = os.path.join(base_dir, "Nassau_Candy_Project_Workbook.xlsx")
+
+    if not os.path.exists(excel_path):
+        st.error(f"Excel file not found at: {excel_path}")
+        st.stop()
+
+    return pd.read_excel(excel_path, sheet_name="Cleaned Data")
 
 
 df = load_data()
+
 
 # Product to Legacy Factory Map
 product_factory_map = {
@@ -47,12 +51,15 @@ product_factory_map = {
     "Wonka Gum": "Secret Factory",
     "Kazookles": "The Other Factory",
 }
+
 df["Current Factory"] = df["Product Name"].map(
     product_factory_map
 ).fillna("Sugar Shack")
 
+
 # Sidebar Controls
 st.sidebar.header("Optimization Control Panel")
+
 selected_region = st.sidebar.multiselect(
     "Filter Destination Region",
     options=sorted(df["Region"].unique()),
@@ -66,8 +73,12 @@ selected_mode = st.sidebar.multiselect(
 )
 
 priority = st.sidebar.slider(
-    "Optimization Priority (Speed vs. Profit)", 0.0, 1.0, 0.5
+    "Optimization Priority (Speed vs. Profit)",
+    0.0,
+    1.0,
+    0.5
 )
+
 
 # Apply Sidebar Filters
 filtered_df = df[
@@ -75,30 +86,90 @@ filtered_df = df[
     & (df["Ship Mode"].isin(selected_mode))
 ].copy()
 
+
 # Metric Summary Cards
 st.subheader("Operational Metrics Summary")
+
 m1, m2, m3, m4 = st.columns(4)
-avg_lead = filtered_df["Adjusted Lead Time (days)"].mean()
-m1.metric("Avg Current Lead Time", f"{avg_lead:.2f} Days", "Baseline")
-m2.metric(
-    "Optimized Lead Time Target", f"{avg_lead * 0.82:.2f} Days", "-18.0% Speed"
+
+if filtered_df.empty:
+
+    m1.metric(
+        "Avg Current Lead Time",
+        "—",
+        "No data"
+    )
+
+    m2.metric(
+        "Optimized Lead Time Target",
+        "—",
+        "No data"
+    )
+
+else:
+
+    avg_lead = filtered_df["Adjusted Lead Time (days)"].mean()
+
+    m1.metric(
+        "Avg Current Lead Time",
+        f"{avg_lead:.2f} Days",
+        "Baseline"
+    )
+
+    m2.metric(
+        "Optimized Lead Time Target",
+        f"{avg_lead * 0.82:.2f} Days",
+        "-18.0% Speed"
+    )
+
+
+m3.metric(
+    "Model R² Confidence Score",
+    "0.621",
+    "Gradient Boosting"
 )
-m3.metric("Model R² Confidence Score", "0.621", "Gradient Boosting")
-m4.metric("Active Scenario Dataset", f"{len(filtered_df):,} Orders", "Filtered")
+
+m4.metric(
+    "Active Scenario Dataset",
+    f"{len(filtered_df):,} Orders",
+    "Filtered"
+)
+
+
+# Message when no filters are selected
+if filtered_df.empty:
+    st.info(
+        "Please select at least one destination region and shipping mode "
+        "to view the optimization results."
+    )
+
 
 st.divider()
 
+
 # Interactive Reallocation Recommendation Matrix
 st.subheader("Factory Reallocation Recommendation Matrix")
-st.dataframe(
-    filtered_df[[
-        "Product Name",
-        "Current Factory",
-        "Ship Mode",
-        "Region",
-        "Adjusted Lead Time (days)",
-        "Sales",
-        "Gross Profit",
-    ]].head(25),
-    use_container_width=True,
-)
+
+if filtered_df.empty:
+
+    st.info(
+        "No orders match the selected filters. "
+        "Please select at least one destination region and shipping mode."
+    )
+
+else:
+
+    st.dataframe(
+        filtered_df[
+            [
+                "Product Name",
+                "Current Factory",
+                "Ship Mode",
+                "Region",
+                "Adjusted Lead Time (days)",
+                "Sales",
+                "Gross Profit",
+            ]
+        ].head(25),
+        use_container_width=True,
+    )
